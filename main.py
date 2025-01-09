@@ -10,7 +10,7 @@ api_key = ""
 
 if "win" in sys.platform:
     config = configparser.ConfigParser()
-    config.read("C:/Users/%s/AppData/Roaming/WakaTime/config.cfg" % os.getlogin())
+    config.read("C:/Users/%s/.wakatime.cfg" % os.getlogin())
     api_key = config["settings"]["api_key"]
 
 elif "darwin" in sys.platform or "linux" in sys.platform:
