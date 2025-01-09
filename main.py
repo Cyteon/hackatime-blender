@@ -1,9 +1,23 @@
 import bpy
 import sys
+import os
 import time
 import requests
+import configparser
 
-last_scene = None
+last_scene = ""
+api_key = ""
+
+if "win" in sys.platform:
+    config = configparser.ConfigParser()
+    config.read("C:/Users/%s/AppData/Roaming/WakaTime/config.cfg" % os.getlogin())
+    api_key = config["settings"]["api_key"]
+
+elif "darwin" in sys.platform or "linux" in sys.platform:
+    config = configparser.ConfigParser()
+    home_dir = os.path.expanduser("~")
+    config.read(home_dir + "/.wakatime.cfg")
+    api_key = config["settings"]["api_key"]
 
 bl_info = {
     "name": "Hackatime Wakatime",
@@ -13,6 +27,7 @@ bl_info = {
 }
 
 print("Starting Hackatime")
+print("API Key: %s" % api_key)
 
 def get_os():
     if "darwin" in sys.platform:
@@ -70,6 +85,23 @@ def send_heartbeat():
 
     print(data)
 
-    #requests.post("https://waka.hackclub.com/users/current/heartbeats", json=data, headers={
-    #    "Content-Type": "application/json",
-    #})
+    res = requests.post("https://waka.hackclub.com/api/users/current/heartbeats", json=data, headers={
+        "Content-Type": "application/json",
+        "Authorization": "Basic %s" % api_key
+    })
+
+    print("Response: " + str(res.status_code), " | ", res.text)
+
+@bpy.app.handlers.persistent
+def timer_fired():
+    global last_scene
+
+    print("Timer fired")
+
+    if encode_scene_as_string() != last_scene:
+        send_heartbeat()
+        last_scene = encode_scene_as_string()
+
+    return 120
+
+bpy.app.timers.register(timer_fired, first_interval=120, persistent=True)
