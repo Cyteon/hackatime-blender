@@ -7,6 +7,7 @@ import configparser
 
 last_scene = ""
 api_key = ""
+coding_time_this_session = 0
 
 if "win" in sys.platform:
     config = configparser.ConfigParser()
@@ -92,6 +93,21 @@ def send_heartbeat():
 
     print("Response: " + str(res.status_code), " | ", res.text)
 
+def update_coding_time():
+    global coding_time_this_session
+    res = requests.get("https://waka.hackclub.com/api/compat/wakatime/v1/users/current/summaries?range=today", headers={
+        "Content-Type": "application/json",
+        "Authorization": "Basic %s" % api_key
+    })
+
+    if res.status_code == 200:
+        data = res.json()
+        coding_time_this_session = data["data"][0]["grand_total"]["total_seconds"]
+        print("Coding time today: %s" % time.strftime("%H:%M:%S", time.gmtime(coding_time_this_session)))
+    else:
+        print("Failed to get coding time")
+        print("Response: " + str(res.status_code), " | ", res.text)
+
 @bpy.app.handlers.persistent
 def timer_fired():
     global last_scene
@@ -101,7 +117,27 @@ def timer_fired():
     if encode_scene_as_string() != last_scene:
         send_heartbeat()
         last_scene = encode_scene_as_string()
+    
+    update_coding_time()
 
     return 120
 
 bpy.app.timers.register(timer_fired, first_interval=120, persistent=True)
+
+def draw_info(self, context):
+    layout = self.layout
+    layout.label(text="Hackatime Today: %s" % time.strftime("%H:%M:%S", time.gmtime(coding_time_this_session)))
+
+def unregister():
+    try:
+        bpy.types.STATUSBAR_HT_header.remove(draw_info)
+    except:
+        pass
+
+def register():
+    unregister()
+
+    bpy.types.STATUSBAR_HT_header.append(draw_info)
+
+register()
+update_coding_time()
